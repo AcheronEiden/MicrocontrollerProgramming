@@ -3,8 +3,8 @@ This is for saving my project for the course Microcontroller Programming 10hp (U
 The Program used is VSC together with the PlatformIO extension & the external AVRDUDESS program.
 
 The files:
-  free_sans.h
-  free_sans2.h
+  - free_sans.h
+  - free_sans2.h
   logo.h
   logo_bw.h
   spi.h
