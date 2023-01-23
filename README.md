@@ -19,4 +19,5 @@ The files:
   - st7735_gfx.c
   - st7735initcmds.h
   - tom_thumb.h
+
 are external libraries that should be saved in the lib or src folder of the PlatfromIO created project.
