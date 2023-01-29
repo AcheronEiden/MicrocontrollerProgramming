@@ -165,7 +165,7 @@ int main(void)
       // Covers the whole screen in black as bg color
       st7735_fill_rect(0, 0, 128, 128, ST7735_COLOR_BLACK);
       break;
-    case 4: // Animation 5
+    case 4: // Animation 5: A big star that grows
       for (i3 = 0; i3 < 50; i3++)
       {
         int l3, colorl3;
