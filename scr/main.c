@@ -1,13 +1,30 @@
-/*
+/*Information
+
  Created: 2023-01-23
  Author : Alhassan Jawad & Andreas Hertzberg (Group ANIMATION)
+ About:
+        This code is an application written in C that uses an Atmega328P microcontroller to
+        implement 4 different subtasks:
+
+          - Two of the tasks that this code implements is the usage of Interrupts
+            where two external push buttons are used for reseting the internal timer0 & changing how
+            the LCD will show the 5 animations (either sequentially or in a random order).
+          - The third subtask that this code implemnts is the usage of Timers, specifically the usage
+            of timer0 which calculates how long the animations have been shown on the LCD display.
+          - The fourth & last subtask that this code implemnts is the usage of GPIO and inputs/outputs
+            to display animations on an LCD display. The code shows 5 differnt animations.
+
+        The code uses libraries for functions such as input/output, delays, interrupts, and working
+        with time and date. The code also uses a number of libraries for the LCD display,
+        including functions for setting the orientation and filling rectangles, as well as libraries
+        for the display's graphics and fonts.
  */
 
-//--------------------------Include(s)------------------------------------------------------------------
+//--------------------------Include(s)----------------------------------------------------------------
 #include <stdio.h>         // Allows us to perform input and output operations
 #include <avr/io.h>        // Includes the apropriate IO definition usage
 #include <util/delay.h>    // Includes the apropriate delay functions
-#include <math.h>          // Set of functions to compute common mathematical operations and transformations
+#include <math.h>          // Functions to compute common mathematical operations and transformations
 #include <avr/interrupt.h> // Includes the interrupt library & its functions
 #include <stdlib.h>        // Collection of functions for performing general purpose tasks
 #include <time.h>          // Collection of functions and macros for working with time and date
@@ -17,14 +34,52 @@
 #include "st7735_font.h"   // Library located in src folder
 #include "logo_bw.h"       // Library located in src folder
 #include "free_sans2.h"    // Library located in src folder
-//------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------
 
-// Global variables & characters
-#define LED_PIN PD7
-char buffer[40];                   // Denotes a computer memory block that acts as a temporary placeholder
-volatile int16_t counter_time = 0; // Decleared as volatile so microcontroller knows it can/will be changed
-volatile int rand_on = 1;          // Declared as volatile so microcontrolelr knows it can/will be changed
+// Global variables, characters & specific pin initialization
+#define LED_PIN PD7                // Defines pin D7 as a Led_PIN to help with the AnimationType task
+char buffer[40];                   // Computer memory block that acts as a temporary placeholder
+volatile int16_t counter_time = 0; // Volatile so microcontroller knows it can/will be changed
+volatile int rand_on = 1;          // Volatile so microcontrolelr knows it can/will be changed
 int sequence = 0;                  // The specific animation that will be shown
+
+// Using External Interrupt Request 0 that will activate when the first pushbutton
+// is pressed and will reset the internal timer0 (Animation5)
+ISR(INT0_vect)
+{
+  counter_time = 0;
+}
+
+// Using External Interrupt 1 that will activate when the second pushbutton
+// is pressed and will make the shown animation sequence sequential or random (AnimationType)
+ISR(INT1_vect)
+{
+  if (rand_on == 1)
+  {
+    if (sequence == 0)
+    {
+      sequence = 1;
+    }
+    else
+    {
+      sequence = 0;
+    }
+
+    rand_on = 0;
+    PORTD = 0b01111100; // Turns of the red diode
+  }
+  else
+  {
+    rand_on = 1;
+    PORTD |= (1 << LED_PIN); // Turns on the red diode
+  }
+}
+
+// Using Timer0 to caluclate the code's running time
+ISR(TIMER0_OVF_vect)
+{
+  counter_time++;
+}
 
 // Initialize the timer
 void init(void)
@@ -43,46 +98,19 @@ void init(void)
   TIMSK0 = (0 << OCIE0B) | (0 << OCIE0A) | (1 << TOIE0);
 }
 
-// Using External Interrupt Request 0 that will activate when first the pushbutton
-// is pressed and will reset the internal timer0
-ISR(INT0_vect)
-{
-  counter_time = 0;
-}
-
-// Using External Interrupt 1 that will activate when the second pushbutton
-// is pressed and will make the shown animation sequence sequential or random
-ISR(INT1_vect)
-{
-  if (rand_on == 1)
-  {
-    sequence = 0;
-    rand_on = 0;
-    PORTD |= (0 << LED_PIN); // DDRD |= (0 << LED_PIN);
-  }
-  else
-  {
-    rand_on = 1;
-    PORTD |= (1 << LED_PIN); // DDRD |= (1 << LED_PIN);
-  }
-}
-
-// Using Timer0 to caluclate the code's running time
-ISR(TIMER0_OVF_vect)
-{
-  counter_time++;
-}
-
 // Main Code
 int main(void)
 {
-  DDRD = 0xF0; // Same as 0b11110000
-  PORTD |= 0xFC; // Same as 0b11111100
-  EICRA = 0x0a;                      // Configures so that when the button is pressed it becomes an input
-  sei();                             // Enables global interrupts
-  EIMSK = (1 << INT1) | (1 << INT0); // External Interrupt 0 (INT0) enabled
+  DDRD = 0b11111111; // All D pins becomes outputs
+  PORTD = 0b11111100;
+  DDRC = 0b00111111; // All C pins becomes outputs
 
-  init();        // Runs the init code (line 27-41)
+  EIMSK = (1 << INT1) | (1 << INT0); // External Interrupts INT0 & INT1 enabled
+  EICRA = EICRA = (1 << ISC11) | (0 << ISC10) |
+                  (1 << ISC01) | (0 << ISC00); // When a button is pressed it becomes an input
+  sei();                                       // Enables global interrupts
+
+  init();        // Runs the init code (line 85-99)
   spi_init();    // Runs the init code in the external library spi.c
   st7735_init(); // Runs the init code in the external library st7735.c
 
@@ -90,7 +118,8 @@ int main(void)
   int animation = 0;
 
   st7735_set_orientation(ST7735_PORTRAIT);
-  st7735_fill_rect(0, 0, 128, 128, ST7735_COLOR_BLACK); // Covers the whole screen in black as bg color
+  // Covers the whole screen in black as bg color
+  st7735_fill_rect(0, 0, 128, 128, ST7735_COLOR_BLACK);
 
   ADMUX = (0 << REFS1) | (1 << REFS0) | (0 << MUX3) | (0 << MUX2) | (0 << MUX1) | (0 << MUX0);
   ADCSRA = (1 << ADEN) | (1 << ADSC) | (1 << ADPS2) | (1 << ADPS1) | (0 << ADPS0);
@@ -100,16 +129,17 @@ int main(void)
 
   while (1)
   {
-    st7735_fill_rect(0, 0, 128, 128, ST7735_COLOR_BLACK); // Covers the whole screen in black as bg color
+    // Covers the whole screen in black as bg color
+    st7735_fill_rect(0, 0, 128, 128, ST7735_COLOR_BLACK);
     if (rand_on == 1)
     {
-      animation = rand() % 6; // Generates a random number between 0 and 4
+      animation = rand() % 5; // Generates a random number between 0 and 4
     }
     else
     {
       animation = sequence;    // Choose which animation will be shown
       sequence++;              // Increment sequence number
-      sequence = sequence % 6; // Limits the chosen case between 0-5
+      sequence = sequence % 5; // Limits the chosen case between 0-4
     }
     switch (animation)
     {
@@ -121,6 +151,7 @@ int main(void)
       int c_animation5; // For star (Animation 5) color modification
 
     case 0: // Animation 1: Circle(s)
+      PORTC |= (1 << PC5);
       for (r = 0; r < 11; r++)
       {
         int radius = r * 5 + 10;                         // Increment radius by 5 pixels each iteration
@@ -131,9 +162,11 @@ int main(void)
       }
       // Covers the whole screen in black as bg color
       st7735_fill_rect(0, 0, 128, 128, ST7735_COLOR_BLACK);
+      PORTC &= ~(1 << PC5);
       break;
 
     case 1: // ANIMATION 2: Rectangle(s)
+      PORTC |= (1 << PC4);
       for (i = 0; i < 12; i++)
       {
         int x = i * 5;                                      // Increment x by 5 pixels each iteration
@@ -145,34 +178,48 @@ int main(void)
       }
       // Covers the whole screen in black as bg color
       st7735_fill_rect(0, 0, 128, 128, ST7735_COLOR_BLACK);
+      PORTC &= ~(1 << PC4);
       break;
 
-    case 2: // Animation 3: Smiley Face
-      // Draws the head
-      for (b = 20; b < 60; b++)
+    case 2: // Animation 3: A big star that grows
+      PORTC |= (1 << PC3);
+      for (c_animation5 = 0; c_animation5 <= 14; c_animation5++)
       {
-        uint16_t color_animation3 = ST7735_COLOR_YELLOW;
-        for (a = 20; a < 60; a++)
+        const uint16_t color_animation5[] = {ST7735_COLOR_RED, ST7735_COLOR_GREEN, ST7735_COLOR_BLUE,
+                                             ST7735_COLOR_YELLOW, ST7735_COLOR_BLUE, ST7735_COLOR_CYAN,
+                                             ST7735_COLOR_MAGENTA, ST7735_COLOR_WHITE, ST7735_COLOR_RED,
+                                             ST7735_COLOR_GREEN, ST7735_COLOR_YELLOW, ST7735_COLOR_CYAN,
+                                             ST7735_COLOR_MAGENTA, ST7735_COLOR_WHITE,
+                                             ST7735_COLOR_BLACK};
+        int color = color_animation5[c_animation5];
+        for (i3 = 0; i3 < 50; i3++)
         {
-          st7735_draw_pixel(a, b, color_animation3);
+          int l3;
+          int16_t q = 64;
+          int16_t p = 64;
+          for (l3 = 0; l3 < 5; l3++)
+          {
+            st7735_draw_pixel(q - l3 - i3, p - l3 - i3, color);
+            st7735_draw_pixel(q + l3 + i3, p - l3 - i3, color);
+            st7735_draw_pixel(q - l3 - i3, p + l3 + i3, color);
+            st7735_draw_pixel(q + l3 + i3, p + l3 + i3, color);
+          }
+          for (l3 = 0; l3 < 4; l3++)
+          {
+            st7735_draw_pixel(q - l3 - i3, p, color);
+            st7735_draw_pixel(q + l3 + i3, p, color);
+            st7735_draw_pixel(q, p - l3 - i3, color);
+            st7735_draw_pixel(q, p + l3 + i3, color);
+          }
+          st7735_draw_pixel(q, p, color);
         }
+        _delay_ms(100);
       }
-
-      // Draws the eyes
-      st7735_draw_pixel(30, 30, ST7735_COLOR_BLACK);
-      st7735_draw_pixel(50, 30, ST7735_COLOR_BLACK);
-
-      // Draws the mouth
-      for (a = 30; a < 50; a++)
-      {
-        st7735_draw_pixel(a, 50, ST7735_COLOR_BLACK);
-      }
-      _delay_ms(500);
-      // Covers the whole screen in black as bg color
-      st7735_fill_rect(0, 0, 128, 128, ST7735_COLOR_BLACK);
+      PORTC &= ~(1 << PC3);
       break;
 
     case 3: // Animation 4: A lot of stars at random positions
+      PORTC |= (1 << PC2);
       for (i2 = 0; i2 < 50; i2++)
       {
         int16_t x = rand() % 128;
@@ -199,63 +246,26 @@ int main(void)
       _delay_ms(1000);
       // Covers the whole screen in black as bg color
       st7735_fill_rect(0, 0, 128, 128, ST7735_COLOR_BLACK);
+      PORTC &= ~(1 << PC2);
       break;
 
-    case 4: // Animation 5: A big star that grows
-      for (c_animation5 = 0; c_animation5 <= 14; c_animation5++)
-      {
-        const uint16_t color_animation5[] = {ST7735_COLOR_RED, ST7735_COLOR_GREEN, ST7735_COLOR_BLUE,
-                                             ST7735_COLOR_YELLOW, ST7735_COLOR_BLUE, ST7735_COLOR_CYAN, ST7735_COLOR_MAGENTA,
-                                             ST7735_COLOR_WHITE, ST7735_COLOR_RED, ST7735_COLOR_GREEN, ST7735_COLOR_YELLOW,
-                                             ST7735_COLOR_CYAN, ST7735_COLOR_MAGENTA, ST7735_COLOR_WHITE,
-                                             ST7735_COLOR_BLACK};
-        int color = color_animation5[c_animation5];
-        for (i3 = 0; i3 < 50; i3++)
-        {
-          int l3;
-          int16_t q = 64;
-          int16_t p = 64;
-          for (l3 = 0; l3 < 5; l3++)
-          {
-            st7735_draw_pixel(q - l3 - i3, p - l3 - i3, color);
-            st7735_draw_pixel(q + l3 + i3, p - l3 - i3, color);
-            st7735_draw_pixel(q - l3 - i3, p + l3 + i3, color);
-            st7735_draw_pixel(q + l3 + i3, p + l3 + i3, color);
-          }
-          for (l3 = 0; l3 < 4; l3++)
-          {
-            st7735_draw_pixel(q - l3 - i3, p, color);
-            st7735_draw_pixel(q + l3 + i3, p, color);
-            st7735_draw_pixel(q, p - l3 - i3, color);
-            st7735_draw_pixel(q, p + l3 + i3, color);
-          }
-          st7735_draw_pixel(q, p, color);
-        }
-        _delay_ms(100);
-      }
+    case 4: // Animation 5: Digita clock that shows running time
+      PORTC |= (1 << PC1);
+      int16_t time_seconds = 0.03264 * counter_time;
+      int hours = time_seconds / 3600;
+      int minutes = (time_seconds % 3600) / 60;
+      int seconds = (time_seconds % 3600) % 60;
+
+      struct tm time_info = {0};
+      time_info.tm_hour = hours;
+      time_info.tm_min = minutes;
+      time_info.tm_sec = seconds;
+      strftime(buffer, 40, "%H:%M:%S", &time_info);
+      st7735_draw_text(20, 64, buffer, &Open_Sans_Regular_20, 1, ST7735_COLOR_BLUE);
+      _delay_ms(5000);
       // Covers the whole screen in black as bg color
-      // st7735_fill_rect(0, 0, 128, 128, ST7735_COLOR_BLACK);
-      break;
-
-    case 5: // Animation 6: Digital clock with running time since start of code
-      while (1)
-      {
-        int16_t time_seconds = 0.03264 * counter_time;
-        int hours = time_seconds / 3600;
-        int minutes = (time_seconds % 3600) / 60;
-        int seconds = (time_seconds % 3600) % 60;
-
-        struct tm time_info = {0};
-        time_info.tm_hour = hours;
-        time_info.tm_min = minutes;
-        time_info.tm_sec = seconds;
-        strftime(buffer, 40, "%H:%M:%S", &time_info);
-        st7735_draw_text(20, 64, buffer, &Open_Sans_Regular_20, 1, ST7735_COLOR_BLUE);
-        _delay_ms(5000);
-        // Covers the whole screen in black as bg color
-        st7735_fill_rect(0, 0, 128, 128, ST7735_COLOR_BLACK);
-        break;
-      }
+      st7735_fill_rect(0, 0, 128, 128, ST7735_COLOR_BLACK);
+      PORTC &= ~(1 << PC1);
       break;
     }
   }
