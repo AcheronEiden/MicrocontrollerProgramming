@@ -3,16 +3,18 @@
  Created: 2023-01-23
  Author : Alhassan Jawad & Andreas Hertzberg (Group ANIMATION)
  About:
-        This code is an application written in C that uses an Atmega328P microcontroller to
-        implement 4 different subtasks:
+        The code shows 5 differnt animations and it is an application written in C that
+        uses an Atmega328P microcontroller to implement 4 different subtasks:
 
-          - Two of the tasks that this code implements is the usage of Interrupts
-            where two external push buttons are used for reseting the internal timer0 & changing how
-            the LCD will show the 5 animations (either sequentially or in a random order).
-          - The third subtask that this code implemnts is the usage of Timers, specifically the usage
-            of timer0 which calculates how long the animations have been shown on the LCD display.
-          - The fourth & last subtask that this code implemnts is the usage of GPIO and inputs/outputs
-            to display animations on an LCD display. The code shows 5 differnt animations.
+          - The first subtask is the usage of GPIO and inputs/outputs to
+              1) display animations on an LCD display
+              2) make use of push buttons.
+          - The second subtask that this code implements is the usage of Timers, specifically the
+            usage of timer0 which calculates how long the code have been running.
+          - The thrid & fourth tasks is the usage of Interrupts where two external
+            push buttons are used for reseting the internal timer0 & changing how
+            the LCD will show the specific animations (either sequentially or in a random order).
+
 
         The code uses libraries for functions such as input/output, delays, interrupts, and working
         with time and date. The code also uses a number of libraries for the LCD display,
@@ -39,9 +41,9 @@
 // Global variables, characters & specific pin initialization
 #define LED_PIN PD7                // Defines pin D7 as a Led_PIN to help with the AnimationType task
 char buffer[40];                   // Computer memory block that acts as a temporary placeholder
-volatile int16_t counter_time = 0; // Volatile so microcontroller knows it can/will be changed
+volatile uint16_t counter_time = 0; // Volatile so microcontroller knows it can/will be changed
 volatile int rand_on = 1;          // Volatile so microcontrolelr knows it can/will be changed
-int sequence = 0;                  // The specific animation that will be shown
+volatile int sequence = 0;                  // The specific animation that will be shown
 
 // Using External Interrupt Request 0 that will activate when the first pushbutton
 // is pressed and will reset the internal timer0 (Animation5)
@@ -66,7 +68,7 @@ ISR(INT1_vect)
     }
 
     rand_on = 0;
-    PORTD = 0b01111100; // Turns of the red diode
+    PORTD &= ~(1 << LED_PIN); // Turns of the red diode
   }
   else
   {
@@ -251,7 +253,7 @@ int main(void)
 
     case 4: // Animation 5: Digita clock that shows running time
       PORTC |= (1 << PC1);
-      int16_t time_seconds = 0.03264 * counter_time;
+      uint16_t time_seconds = counter_time/31; // 0.03264 * counter_time
       int hours = time_seconds / 3600;
       int minutes = (time_seconds % 3600) / 60;
       int seconds = (time_seconds % 3600) % 60;
