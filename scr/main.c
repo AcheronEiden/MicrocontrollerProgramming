@@ -11,8 +11,8 @@
               2) make use of push buttons.
           - The second subtask that this code implements is the usage of Timers, specifically the
             usage of timer0 which calculates how long the code have been running.
-          - The thrid & fourth tasks is the usage of Interrupts where two external
-            push buttons are used for reseting the internal timer0 & changing how
+          - The third & fourth tasks is the usage of Interrupts where two external
+            push buttons are used for resetting the internal timer0 & changing how
             the LCD will show the specific animations (either sequentially or in a random order).
 
 
