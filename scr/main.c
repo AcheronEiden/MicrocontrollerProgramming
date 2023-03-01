@@ -1,7 +1,7 @@
 /*Information
 
  Created: 2023-01-23
- Author : Alhassan Jawad & Andreas Hertzberg (Group ANIMATION)
+ Authors : Eiden Acheron & John Doe (Group ANIMATION)
  About:
         The code shows 5 differnt animations and it is an application written in C that
         uses an Atmega328P microcontroller to implement 4 different subtasks:
