@@ -16,4 +16,4 @@ The files:
   - **st7735initcmds.h**
   - **tom_thumb.h**
 
-are external libraries that should be saved in the lib or src folder of the PlatfromIO created project.
+are external libraries that should be saved in the lib or src folder of the PlatfromIO created project. We got the libraries from our supervisor **Uwe Zimmermann**. Some of the libraries where written by him while consulting the atmega328p documentation while some libraries where gathered from other places.
